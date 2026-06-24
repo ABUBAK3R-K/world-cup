@@ -1,33 +1,34 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGameState } from '@/hooks/useGameState';
 import { MatchResult, DraftedPlayer } from '@/types/game';
 import { getRoleLabel } from '@/lib/teamStrength';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, RotateCcw, ArrowRight, Share2, Shield } from 'lucide-react';
+import { Check, X, RotateCcw, ArrowRight, Share2, Shield, Download, Loader2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
 
 type MatchDisplay = MatchResult & { stageLabel: string };
 
-const teamThemes: Record<string, { bg: string, text: string, muted: string }> = {
-  'India': { bg: 'bg-[#00529B]', text: 'text-white', muted: 'text-white/70' },
-  'Australia': { bg: 'bg-[#FDB913]', text: 'text-[#1a1a1a]', muted: 'text-[#1a1a1a]/70' },
-  'South Africa': { bg: 'bg-[#007749]', text: 'text-white', muted: 'text-white/70' },
-  'Pakistan': { bg: 'bg-[#006600]', text: 'text-white', muted: 'text-white/70' },
-  'England': { bg: 'bg-[#CE1126]', text: 'text-white', muted: 'text-white/70' },
-  'New Zealand': { bg: 'bg-[#1a1a1a]', text: 'text-white', muted: 'text-white/70' },
-  'Sri Lanka': { bg: 'bg-[#002366]', text: 'text-white', muted: 'text-white/70' },
-  'West Indies': { bg: 'bg-[#7A003C]', text: 'text-white', muted: 'text-white/70' },
-  'Bangladesh': { bg: 'bg-[#006A4E]', text: 'text-white', muted: 'text-white/70' },
-  'Zimbabwe': { bg: 'bg-[#DA291C]', text: 'text-white', muted: 'text-white/70' },
-  'Netherlands': { bg: 'bg-[#FF4F00]', text: 'text-white', muted: 'text-white/70' },
-  'Ireland': { bg: 'bg-[#009A44]', text: 'text-white', muted: 'text-white/70' },
-  'Afghanistan': { bg: 'bg-[#0033A0]', text: 'text-white', muted: 'text-white/70' },
-  'Scotland': { bg: 'bg-[#002B5C]', text: 'text-white', muted: 'text-white/70' },
-  'Kenya': { bg: 'bg-[#008000]', text: 'text-white', muted: 'text-white/70' },
-  'Canada': { bg: 'bg-[#FF0000]', text: 'text-white', muted: 'text-white/70' },
-  'default': { bg: 'bg-white', text: 'text-[#1a1a1a]', muted: 'text-[#1a1a1a]/70' }
+const teamThemes: Record<string, { bg: string, text: string, muted: string, hex: string }> = {
+  'India': { bg: 'bg-[#00529B]', text: 'text-white', muted: 'text-white/70', hex: '#00529B' },
+  'Australia': { bg: 'bg-[#FDB913]', text: 'text-[#1a1a1a]', muted: 'text-[#1a1a1a]/70', hex: '#FDB913' },
+  'South Africa': { bg: 'bg-[#007749]', text: 'text-white', muted: 'text-white/70', hex: '#007749' },
+  'Pakistan': { bg: 'bg-[#006600]', text: 'text-white', muted: 'text-white/70', hex: '#006600' },
+  'England': { bg: 'bg-[#CE1126]', text: 'text-white', muted: 'text-white/70', hex: '#CE1126' },
+  'New Zealand': { bg: 'bg-[#1a1a1a]', text: 'text-white', muted: 'text-white/70', hex: '#1a1a1a' },
+  'Sri Lanka': { bg: 'bg-[#002366]', text: 'text-white', muted: 'text-white/70', hex: '#002366' },
+  'West Indies': { bg: 'bg-[#7A003C]', text: 'text-white', muted: 'text-white/70', hex: '#7A003C' },
+  'Bangladesh': { bg: 'bg-[#006A4E]', text: 'text-white', muted: 'text-white/70', hex: '#006A4E' },
+  'Zimbabwe': { bg: 'bg-[#DA291C]', text: 'text-white', muted: 'text-white/70', hex: '#DA291C' },
+  'Netherlands': { bg: 'bg-[#FF4F00]', text: 'text-white', muted: 'text-white/70', hex: '#FF4F00' },
+  'Ireland': { bg: 'bg-[#009A44]', text: 'text-white', muted: 'text-white/70', hex: '#009A44' },
+  'Afghanistan': { bg: 'bg-[#0033A0]', text: 'text-white', muted: 'text-white/70', hex: '#0033A0' },
+  'Scotland': { bg: 'bg-[#002B5C]', text: 'text-white', muted: 'text-white/70', hex: '#002B5C' },
+  'Kenya': { bg: 'bg-[#008000]', text: 'text-white', muted: 'text-white/70', hex: '#008000' },
+  'Canada': { bg: 'bg-[#FF0000]', text: 'text-white', muted: 'text-white/70', hex: '#FF0000' },
+  'default': { bg: 'bg-white', text: 'text-[#1a1a1a]', muted: 'text-[#1a1a1a]/70', hex: '#ffffff' }
 };
 
 function getTeamTheme(teamName: string) {
@@ -37,6 +38,7 @@ function getTeamTheme(teamName: string) {
 export function ResultsScreen() {
   const { state, resetGame } = useGameState();
   const results = state.tournamentResults;
+  const shareCardRef = useRef<HTMLDivElement>(null);
   
   const [seed, setSeed] = useState('');
   useEffect(() => {
@@ -48,6 +50,7 @@ export function ResultsScreen() {
   const [mode, setMode] = useState<'MATCH' | 'AUTO'>('MATCH');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<'MATCHES' | 'MY_CARD'>('MATCHES');
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   useEffect(() => {
     if (!results) return;
@@ -119,18 +122,72 @@ export function ResultsScreen() {
     .map(bo => state.squad.find(p => p.id === bo.playerVersionId))
     .filter(Boolean) as DraftedPlayer[];
 
-  const handleShare = () => {
-    const text = `I just built my World Cup XI and got ${wins} wins and ${losses} losses! Can you do better?`;
-    const url = window.location.origin;
-    if (navigator.share) {
-      navigator.share({
-        title: 'World Cup Draft XI',
-        text,
-        url
-      }).catch(console.error);
-    } else {
-      navigator.clipboard.writeText(`${text} Play here: ${url}`);
-      alert('Link copied to clipboard!');
+  const generateShareImage = async (): Promise<Blob | null> => {
+    if (!shareCardRef.current) return null;
+    
+    try {
+      const canvas = await html2canvas(shareCardRef.current, {
+        backgroundColor: '#f4f1ea',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        width: shareCardRef.current.scrollWidth,
+        height: shareCardRef.current.scrollHeight,
+      });
+      
+      return new Promise((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), 'image/png', 1.0);
+      });
+    } catch (err) {
+      console.error('Failed to generate image:', err);
+      return null;
+    }
+  };
+
+  const handleShare = async () => {
+    setIsGeneratingImage(true);
+
+    try {
+      const blob = await generateShareImage();
+      
+      if (!blob) {
+        // Fallback to text-only share
+        const text = `I just built my World Cup XI and got ${wins} wins and ${losses} losses! Can you do better?`;
+        const url = window.location.origin;
+        if (navigator.share) {
+          await navigator.share({ title: 'World Cup Draft XI', text, url });
+        } else {
+          await navigator.clipboard.writeText(`${text} Play here: ${url}`);
+          alert('Link copied to clipboard!');
+        }
+        return;
+      }
+
+      const file = new File([blob], 'my-world-cup-xi.png', { type: 'image/png' });
+
+      // Try native share with file first
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: 'My World Cup XI',
+          text: `I just built my World Cup XI and got ${wins} wins and ${losses} losses! Can you do better?`,
+          files: [file],
+          url: window.location.origin,
+        });
+      } else {
+        // Fallback: download the image
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'my-world-cup-xi.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error('Share failed:', err);
+    } finally {
+      setIsGeneratingImage(false);
     }
   };
 
@@ -167,104 +224,206 @@ export function ResultsScreen() {
 
       {viewMode === 'MY_CARD' ? (
         <div className="space-y-8 animate-in fade-in duration-500">
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-            {orderedSquad.map((option, idx) => {
-              const roleLabel = getRoleLabel(option.battingRating, option.bowlingRating);
-              const theme = getTeamTheme(option.team);
-              const themeHex = theme.bg.startsWith('bg-[') ? theme.bg.slice(4, -1) : (theme.bg === 'bg-white' ? '#ffffff' : 'inherit');
-              const isDarkCard = theme.text === 'text-white';
-              const badgeBgClass = isDarkCard ? 'bg-white' : 'bg-[var(--theme-ink)]';
-
-              return (
-                <div
-                  key={option.id}
-                  className={`p-4 flex flex-col items-start relative overflow-hidden border-2 border-[var(--theme-ink)] rounded-sm ${theme.bg} shadow-[4px_4px_0px_var(--theme-ink)]`}
-                >
-                  <div className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-[var(--theme-ink)] text-[var(--theme-paper)] font-black text-sm rounded-sm z-10">
-                    {option.overallRating}
-                  </div>
-
-                  <div className="w-[calc(100%-2rem)] mb-3 z-10 min-h-[2.5rem] flex items-start">
-                    <div className={`text-sm font-black leading-tight uppercase ${theme.text} line-clamp-2 break-words`}>
-                      <span className="text-[10px] opacity-70 block mb-0.5">#{idx + 1}</span>
-                      {option.player.name}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1 w-full mb-3 z-10">
-                    <span 
-                      className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-sm ${badgeBgClass}`}
-                      style={{ color: themeHex }}
-                    >
-                      {option.battingOrderType}
-                    </span>
-                    <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-sm text-[var(--theme-ink)] bg-white border border-[var(--theme-ink)]/20">
-                      {roleLabel}
-                    </span>
-                    {option.isWicketkeeper && (
-                      <span className="text-[9px] font-black uppercase tracking-wider bg-amber-300 text-amber-900 px-1.5 py-0.5 rounded-sm flex items-center gap-0.5 border border-amber-400">
-                        <Shield className="w-2.5 h-2.5" /> WK
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="w-full space-y-1.5 text-xs z-10 mt-auto">
-                    <div className="flex justify-between border-b border-current opacity-80 pb-1">
-                      <span className={`font-bold uppercase text-[10px] ${theme.text}`}>Bat</span>
-                      <span className={`font-black ${theme.text}`}>{option.battingRating}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-current opacity-80 pb-1">
-                      <span className={`font-bold uppercase text-[10px] ${theme.text}`}>Bowl</span>
-                      <span className={`font-black ${theme.text}`}>{option.bowlingRating}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className={`font-bold uppercase text-[10px] ${theme.text}`}>Field</span>
-                      <span className={`font-black ${theme.text}`}>{option.fieldingRating}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="bg-[#1a1a1a] text-white p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-8 shadow-[8px_8px_0px_var(--theme-accent)]">
-            <div className="flex flex-col items-center justify-center sm:border-r-2 border-white/10 sm:pr-8">
-              <span className="text-xs font-black text-[var(--theme-accent)] uppercase tracking-widest mb-2">RESULTS</span>
-              <span className="text-6xl font-black leading-none tracking-tighter text-white drop-shadow-[4px_4px_0px_#e64a33]">
-                {wins}<span className="text-4xl text-white/50">-</span>{losses}
-              </span>
+          {/* ====== SHAREABLE CARD AREA — captured by html2canvas ====== */}
+          <div ref={shareCardRef} style={{ backgroundColor: '#f4f1ea', padding: '24px', borderRadius: '2px' }}>
+            {/* Card Header */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase' as const, color: '#1a1a1a80', marginBottom: '4px' }}>YOUR SQUAD</div>
+              <div style={{ fontSize: '42px', fontWeight: 900, color: '#1a1a1a', letterSpacing: '-0.03em', lineHeight: 1 }}>My Cards</div>
+              <div style={{ height: '2px', backgroundColor: '#1a1a1a', marginTop: '12px' }} />
             </div>
-            
-            <div className="flex flex-col justify-center gap-4 flex-1">
+
+            {/* Player Cards Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+              {orderedSquad.map((option, idx) => {
+                const roleLabel = getRoleLabel(option.battingRating, option.bowlingRating);
+                const theme = getTeamTheme(option.team);
+                const themeHex = theme.hex;
+                const isDarkCard = theme.text === 'text-white';
+                const badgeBg = isDarkCard ? '#ffffff' : '#1a1a1a';
+                const badgeText = themeHex;
+                const textColor = isDarkCard ? '#ffffff' : '#1a1a1a';
+                const mutedColor = isDarkCard ? 'rgba(255,255,255,0.7)' : 'rgba(26,26,26,0.7)';
+
+                return (
+                  <div
+                    key={option.id}
+                    style={{
+                      backgroundColor: themeHex,
+                      border: '2px solid #1a1a1a',
+                      borderRadius: '2px',
+                      padding: '14px',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column' as const,
+                      boxShadow: '4px 4px 0px #1a1a1a',
+                    }}
+                  >
+                    {/* OVR Badge */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '8px',
+                      right: '8px',
+                      width: '30px',
+                      height: '30px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: '#1a1a1a',
+                      color: '#f4f1ea',
+                      fontWeight: 900,
+                      fontSize: '13px',
+                      borderRadius: '2px',
+                    }}>
+                      {option.overallRating}
+                    </div>
+
+                    {/* Position & Name */}
+                    <div style={{ marginBottom: '10px', paddingRight: '36px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 900, color: mutedColor, marginBottom: '2px' }}>#{idx + 1}</div>
+                      <div style={{ fontSize: '13px', fontWeight: 900, color: textColor, textTransform: 'uppercase' as const, lineHeight: 1.2 }}>
+                        {option.player.name}
+                      </div>
+                    </div>
+
+                    {/* Badges */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '4px', marginBottom: '10px' }}>
+                      <span style={{
+                        fontSize: '9px',
+                        fontWeight: 900,
+                        textTransform: 'uppercase' as const,
+                        letterSpacing: '0.05em',
+                        padding: '2px 6px',
+                        borderRadius: '2px',
+                        backgroundColor: badgeBg,
+                        color: badgeText,
+                      }}>
+                        {option.battingOrderType}
+                      </span>
+                      <span style={{
+                        fontSize: '9px',
+                        fontWeight: 900,
+                        textTransform: 'uppercase' as const,
+                        letterSpacing: '0.05em',
+                        padding: '2px 6px',
+                        borderRadius: '2px',
+                        backgroundColor: '#ffffff',
+                        color: '#1a1a1a',
+                        border: '1px solid rgba(26,26,26,0.2)',
+                      }}>
+                        {roleLabel}
+                      </span>
+                      {option.isWicketkeeper && (
+                        <span style={{
+                          fontSize: '9px',
+                          fontWeight: 900,
+                          textTransform: 'uppercase' as const,
+                          letterSpacing: '0.05em',
+                          padding: '2px 6px',
+                          borderRadius: '2px',
+                          backgroundColor: '#fcd34d',
+                          color: '#78350f',
+                          border: '1px solid #fbbf24',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '2px',
+                        }}>
+                          🧤 WK
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Stats */}
+                    <div style={{ marginTop: 'auto' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${mutedColor}`, paddingBottom: '4px', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, color: textColor }}>BAT</span>
+                        <span style={{ fontSize: '12px', fontWeight: 900, color: textColor }}>{option.battingRating}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${mutedColor}`, paddingBottom: '4px', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, color: textColor }}>BOWL</span>
+                        <span style={{ fontSize: '12px', fontWeight: 900, color: textColor }}>{option.bowlingRating}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, color: textColor }}>FIELD</span>
+                        <span style={{ fontSize: '12px', fontWeight: 900, color: textColor }}>{option.fieldingRating}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Results Footer inside the shareable card */}
+            <div style={{
+              backgroundColor: '#1a1a1a',
+              color: '#ffffff',
+              padding: '24px 28px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '32px',
+              borderRadius: '2px',
+            }}>
+              <div style={{ textAlign: 'center', borderRight: '2px solid rgba(255,255,255,0.1)', paddingRight: '28px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 900, color: '#e64a33', textTransform: 'uppercase' as const, letterSpacing: '0.2em', marginBottom: '6px' }}>RESULTS</div>
+                <div style={{ fontSize: '48px', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em' }}>
+                  {wins}<span style={{ fontSize: '32px', color: 'rgba(255,255,255,0.5)' }}>.</span>{losses}
+                </div>
+              </div>
               <div>
-                <h3 className="text-xl font-black text-white/90 uppercase tracking-tight">{wins >= 3 ? 'KNOCKOUTS REACHED' : 'ELIMINATED IN GROUPS'}</h3>
-                <p className="text-sm font-medium text-white/50">{totalRuns} Runs · {totalWickets} Wickets</p>
+                <div style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase' as const, letterSpacing: '-0.02em', marginBottom: '4px' }}>
+                  {wins >= 3 ? 'KNOCKOUTS REACHED' : 'ELIMINATED IN GROUPS'}
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>
+                  {totalRuns} Runs · {totalWickets} Wickets
+                </div>
+              </div>
+              <div style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 900, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' as const, letterSpacing: '0.15em' }}>
+                8-0 WORLD CUP XI
               </div>
             </div>
+          </div>
+          {/* ====== END SHAREABLE CARD AREA ====== */}
 
-            <div className="flex flex-col gap-3 w-full sm:w-auto shrink-0">
-              <button 
-                onClick={handleShare}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-[#e64a33] hover:bg-[#d53e28] transition-colors text-white font-black text-sm uppercase tracking-wider shadow-[4px_4px_0px_var(--theme-ink)] border-2 border-[var(--theme-ink)] active:translate-y-1 active:translate-x-1 active:shadow-[0px_0px_0px_var(--theme-ink)]"
-              >
-                <Share2 className="w-4 h-4" /> SHARE RESULTS
-              </button>
-              <button 
-                onClick={resetGame}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-transparent hover:bg-white/5 transition-colors text-white font-black text-sm uppercase tracking-wider border-2 border-white/20"
-              >
-                <RotateCcw className="w-4 h-4" /> PLAY AGAIN
-              </button>
-            </div>
+          {/* Action Buttons (outside the capture area) */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button 
+              onClick={handleShare}
+              disabled={isGeneratingImage}
+              className="flex-1 flex items-center justify-center gap-2 px-8 py-4 bg-[#e64a33] hover:bg-[#d53e28] transition-colors text-white font-black text-sm uppercase tracking-wider shadow-[4px_4px_0px_var(--theme-ink)] border-2 border-[var(--theme-ink)] active:translate-y-1 active:translate-x-1 active:shadow-[0px_0px_0px_var(--theme-ink)] disabled:opacity-60 disabled:cursor-wait"
+            >
+              {isGeneratingImage ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> GENERATING...
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4" /> SHARE RESULTS
+                </>
+              )}
+            </button>
+            <button 
+              onClick={handleShare}
+              disabled={isGeneratingImage}
+              className="flex items-center justify-center gap-2 px-6 py-4 border-2 border-[var(--theme-ink)] bg-[var(--theme-paper)] hover:bg-[var(--theme-ink)]/5 transition-colors text-[var(--theme-ink)] font-black text-sm uppercase tracking-wider shadow-[4px_4px_0px_var(--theme-ink)] active:translate-y-1 active:translate-x-1 active:shadow-[0px_0px_0px_var(--theme-ink)] disabled:opacity-60 disabled:cursor-wait"
+            >
+              <Download className="w-4 h-4" /> DOWNLOAD CARD
+            </button>
           </div>
           
-          <div className="flex justify-center pt-4">
-             <button 
-               onClick={() => setViewMode('MATCHES')}
-               className="text-sm font-bold uppercase tracking-widest text-[var(--theme-ink)]/50 hover:text-[var(--theme-ink)] transition-colors underline underline-offset-4"
-             >
-               BACK TO MATCH LOG
-             </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button 
+              onClick={resetGame}
+              className="flex items-center justify-center gap-2 px-6 py-3 border-2 border-[var(--theme-ink)]/20 bg-transparent hover:bg-[var(--theme-ink)]/5 transition-colors text-[var(--theme-ink)] font-black text-sm uppercase tracking-wider"
+            >
+              <RotateCcw className="w-4 h-4" /> PLAY AGAIN
+            </button>
+            <button 
+              onClick={() => setViewMode('MATCHES')}
+              className="text-sm font-bold uppercase tracking-widest text-[var(--theme-ink)]/50 hover:text-[var(--theme-ink)] transition-colors underline underline-offset-4"
+            >
+              BACK TO MATCH LOG
+            </button>
           </div>
         </div>
       ) : (

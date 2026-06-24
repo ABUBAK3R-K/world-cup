@@ -17,6 +17,15 @@ export function HomeScreen() {
   return (
     <div className="w-full max-w-7xl mx-auto flex flex-col pt-8 pb-16 px-4">
       
+      {/* Cross-Link Banner */}
+      <a href="https://ipl-draft-xi.vercel.app" target="_blank" rel="noopener noreferrer" className="bg-[#1a1a1a] text-white p-3 mb-8 border-2 border-[var(--theme-ink)] flex items-center justify-between hover:bg-[#2a2a2a] transition-colors group shadow-[4px_4px_0px_var(--theme-ink)]">
+        <div className="flex items-center gap-3">
+          <span className="bg-[#e64a33] text-white text-[10px] font-black uppercase px-2 py-1 tracking-wider">NEW</span>
+          <span className="text-sm font-bold tracking-tight">Try the new <strong className="font-black text-[#FDB913]">IPL Draft XI</strong> version! Build your ultimate 12-man franchise squad.</span>
+        </div>
+        <ArrowRight className="w-5 h-5 text-[#FDB913] group-hover:translate-x-1 transition-transform" />
+      </a>
+
       {/* Top Split Section */}
       <div className="flex flex-col lg:flex-row gap-12 lg:gap-24 mb-20">
         
