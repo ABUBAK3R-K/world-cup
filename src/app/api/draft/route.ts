@@ -19,7 +19,16 @@ export async function GET(req: Request) {
       include: { player: true }
     });
 
-    return NextResponse.json({ options: squadPlayers });
+    // Override battingOrderType: bowlers are always LOW order
+    const correctedPlayers = squadPlayers.map(p => {
+      const isBowler = p.bowlingRating > p.battingRating && p.battingRating < 50;
+      if (isBowler) {
+        return { ...p, battingOrderType: 'LOW' };
+      }
+      return p;
+    });
+
+    return NextResponse.json({ options: correctedPlayers });
   } catch (error) {
     console.error("Draft API error:", error);
     return NextResponse.json({ error: "Failed to fetch players" }, { status: 500 });
