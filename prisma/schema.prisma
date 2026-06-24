@@ -1,0 +1,56 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Player {
+  id           Int             @id @default(autoincrement())
+  name         String
+  country      String
+  battingStyle String          // "Right-hand bat" | "Left-hand bat"
+  bowlingStyle String          // "Right-arm fast" | "Left-arm spin" | etc.
+  versions     PlayerVersion[]
+}
+
+model PlayerVersion {
+  id              Int      @id @default(autoincrement())
+  playerId        Int
+  player          Player   @relation(fields: [playerId], references: [id])
+  worldCupYear    Int
+  team            String
+
+  matches         Int
+  runs            Int
+  average         Float
+  strikeRate      Float
+
+  wickets         Int
+  bowlingAverage  Float?
+  economy         Float?
+
+  catches         Int
+
+  battingRating     Int
+  bowlingRating     Int
+  fieldingRating    Int
+  overallRating     Int
+  eligiblePositions String
+  battingOrderType  String
+  isWicketkeeper    Boolean @default(false)
+
+  @@unique([playerId, worldCupYear])
+}
+
+model DominanceBonus {
+  id            Int    @id @default(autoincrement())
+  playerName    String @map("player_name")
+  worldCupYear  Int    @map("world_cup_year")
+  bonus         Int    @default(0)
+
+  @@unique([playerName, worldCupYear])
+  @@map("dominance_bonus")
+}
